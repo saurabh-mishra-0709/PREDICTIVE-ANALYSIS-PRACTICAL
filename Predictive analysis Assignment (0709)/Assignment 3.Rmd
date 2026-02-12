@@ -1,0 +1,161 @@
+---
+title: "Problem Set 3"
+author: "SAURABH MISHRA"
+date: "2026-02-12"
+output: html_document
+---
+
+## PREDICTIVE ANALYSIS
+### PROBLEM SET 3
+### Roll no.: 709
+
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+
+## 2) Problem to demonstrate the role of qualita-tive (nominal) predictors in addition to quantitative predictors in multiple linear regression.
+
+Attach “Credits” data from R. Regress “balance” on
+```{r}
+library(ISLR)
+library(stargazer)
+data(Credit)
+# Check structure
+str(Credit)
+
+```
+```{r}
+Credit$Gender <- as.factor(Credit$Gender)
+Credit$Ethnicity <- as.factor(Credit$Ethnicity)
+
+```
+
+**(a) “gender” only.**
+```{r}
+model_a <- lm(Balance ~ Gender, data = Credit)
+summary(model_a)
+
+```
+
+**(b) “gender” and “ethnicity” .**
+```{r}
+model_b <- lm(Balance ~ Gender + Ethnicity, data = Credit)
+summary(model_b)
+
+
+```
+
+**(c) “gender”, “ethnicity”, “income”.**
+```{r}
+model_c <- lm(Balance ~ Gender + Ethnicity + Income, data = Credit)
+summary(model_c)
+
+```
+
+**(d) Output all the regressions in (a)-(c) in a single table using stargazer. Comment on the significant coefficients in each of the models.**
+```{r}
+stargazer(model_a, model_b, model_c,
+          type = "text",
+          title = "Regression Results",
+          dep.var.labels = "Balance",
+          covariate.labels = c("Female",
+                               "African American",
+                               "Asian",
+                               "Income"),
+          digits = 3)
+
+```
+Across the three models, gender is not statistically significant when explaining credit card balance. Adding ethnicity in model (b) does not change this result, as ethnicity is also typically insignificant. In model (c), income enters as a highly significant and positive predictor of balance. This indicates that higher income is strongly associated with higher credit card balances. Once income is included, gender and ethnicity remain statistically insignificant. Therefore, income appears to be the main driver of credit card balance in this dataset.
+
+
+**(e) Explain how gender affects “balance” in each of the models (a)- (c) .**
+
+In model (a), gender measures the simple difference in average balance between males and females, and it is typically not statistically significant. In model (b), gender measures the difference after controlling for ethnicity, and it remains insignificant. In model (c), gender measures the difference after controlling for both ethnicity and income, and it still remains insignificant. Thus, gender does not have a meaningful effect on balance in any of the models.
+
+**(f) Compare the average credit card balance of a male African with a male Caucasian on the basis of model (b).**
+
+Using model (b), the difference in average balance between a male African American and a male Caucasian is equal to the coefficient on the African American variable. Since both individuals are male, the gender effect is zero for both, so it cancels out. Therefore, the comparison depends only on the ethnicity coefficient. If the coefficient is positive, the African American male has a higher average balance by that amount; if negative, a lower balance.
+
+**(g) Compare the average credit card balance of a male African with a male Caucasian when each earns 100,000 dollars. For comparison, use the model in (c).**
+
+Using model (c), the difference between a male African American and a male Caucasian who both earn $100,000 is still equal to the coefficient on the African American variable. Since both individuals are male and have the same income, the effects of gender and income cancel out. Therefore, the difference in predicted balance depends only on the ethnicity coefficient and is the same as in model (b).
+
+**(h) Compare and comment on the answers in (f) and (g)**
+
+The answers in (f) and (g) are the same because in both cases the difference depends only on the coefficient of the African American variable. In (g), even though income is included in the model, both individuals earn the same amount, so the income effect cancels out. Since there is no interaction between income and ethnicity, the ethnic difference remains constant. Therefore, adding income does not change the comparison.
+(i) Based on the model in (c), predict the credit card balance of a female Asian
+whose income is 2000,000 dollars.
+
+**(j) Check the goodness of fit of the different models in (a) -(c) in terms of AIC,BIC and adjusted R2.Which model would you prefer?**
+
+Comparing using R², model (c) has the highest value, meaning it explains the largest proportion of variation in credit card balance. Model (b) has a slightly higher adjusted R² than model (a), but the improvement is small. Model (a) has the lowest adjusted R², indicating the weakest explanatory power. Therefore, based solely on adjusted R², model (c) is preferred.
+
+## 4) Problem to demonstrate the impact of ignoring interaction term in multiple linear regression
+
+**Consider a simulation setting where the data is generated as follows:**
+
+**Step 1: Generate x1i from Normal(0,1) distribution, i = 1, 2, .., n**
+
+**Step 2: Generate x2i from Bernoulli (0.3) distribution, i = 1, 2, .., n**
+
+**Step 3: Generate εi from Normal(0,1) and hence generate the response yi = β0 + β1x1i + β2x2i + β3(x1i × x2i) + εi, i = 1, 2, , , n.**
+
+**Step 4: Run two separate multiple linear regressions (i) using the model in Step 3 and (ii) using the model in Step 3 without the interaction term.** 
+
+**Repeat Steps 1-4 , R = 1000 times. At each simulation compute the MSE for the correct model (i.e. model with the interaction term) and the naive model (i.e. the model without the interaction term). Finally find the average MSE’s for each model. From the output, demonstrate the impact of ignoring the interaction term.**
+
+**Carry out the analysis for n = 100 and the following parametric configurations: (β0, β1, β2, β3) = (−2.5, 1.2, 2.3, 0.001) , (-2.5, 1.2. 2.3, 3.1). Set seed as 123.**
+
+```{r}
+set.seed(123)
+
+# Parameters
+n <- 100
+R <- 1000
+
+# Function to run simulation for given beta values
+run_simulation <- function(beta0, beta1, beta2, beta3) {
+  
+  mse_correct <- numeric(R)
+  mse_naive   <- numeric(R)
+  
+  for (r in 1:R) {
+    
+    # Step 1: Generate x1
+    x1 <- rnorm(n, 0, 1)
+    
+    # Step 2: Generate x2
+    x2 <- rbinom(n, 1, 0.3)
+    
+    # Step 3: Generate epsilon and y
+    epsilon <- rnorm(n, 0, 1)
+    y <- beta0 + beta1*x1 + beta2*x2 + beta3*(x1*x2) + epsilon
+    
+    # Step 4(i): Correct model (with interaction)
+    model_correct <- lm(y ~ x1 * x2)
+    mse_correct[r] <- mean(residuals(model_correct)^2)
+    
+    # Step 4(ii): Naive model (without interaction)
+    model_naive <- lm(y ~ x1 + x2)
+    mse_naive[r] <- mean(residuals(model_naive)^2)
+  }
+  
+  return(c(mean(mse_correct), mean(mse_naive)))
+}
+
+# Case 1: Small interaction
+result1 <- run_simulation(-2.5, 1.2, 2.3, 0.001)
+
+# Case 2: Large interaction
+result2 <- run_simulation(-2.5, 1.2, 2.3, 3.1)
+
+# Output results
+results <- data.frame(
+  Case = c("Small Interaction (0.001)", "Large Interaction (3.1)"),
+  MSE_Correct_Model = c(result1[1], result2[1]),
+  MSE_Naive_Model = c(result1[2], result2[2])
+)
+
+print(results)
+
+```
+When the interaction coefficient is very small (β₃ = 0.001), the average MSE of the correct and naive models is almost the same, showing that ignoring the interaction has little impact. However, when the interaction is large (β₃ = 3.1), the naive model (without interaction) has a much higher average MSE than the correct model. This indicates substantial loss of accuracy due to model misspecification. Therefore, ignoring an important interaction term can significantly worsen model performance.
