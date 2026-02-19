@@ -1,0 +1,245 @@
+---
+title: "ASSIGNMENT 4"
+author: "SAURABH MISHRA"
+date: "2026-02-19"
+output: html_document
+---
+## 1. Problem to demonstrate multicollinearity
+
+Consider the Credit data in the ISLR library. Choose balance as the response
+and Age, Limit and Rating as the predictors.
+
+(a) Make a scatter plot of (i) Age versus Limit and (ii) Rating Versus Limit.
+Comment on the scatter plot.
+
+```{r}
+# Load libraries
+library(ISLR)
+library(ggplot2)
+
+# Load data
+data(Credit)
+
+# Scatter Plot 1: Age vs Limit
+ggplot(Credit, aes(x = Age, y = Limit)) +
+  geom_point(color = "blue") +
+  theme_minimal() +
+  labs(title = "Scatter Plot: Age vs Limit")
+
+# Scatter Plot 2: Rating vs Limit
+ggplot(Credit, aes(x = Rating, y = Limit)) +
+  geom_point(color = "red") +
+  theme_minimal() +
+  labs(title = "Scatter Plot: Rating vs Limit")
+
+```
+**Comments on Scatter Plots**
+
+(i) Age vs Limit
+
+   The plot shows no strong linear relationship.
+
+   Data points are widely scattered.
+
+   This indicates weak or negligible correlation between Age and Limit.
+
+(ii) Rating vs Limit
+
+   The plot shows a very strong positive linear relationship.
+
+   Points lie almost perfectly on a straight line.
+
+   This indicates extreme correlation, suggesting serious multicollinearity 
+   risk.
+
+
+(b) Run three separate regressions: (i) Balance on Age and Limit (ii) Balance
+on Age, Rating and Limit (iii) Balance on Rating and Limit. Present all the
+regression output in a single table using stargazer. What is the marked differ-
+ence that you can observe from the output?
+```{r}
+# Load stargazer
+library(stargazer)
+
+# Regression models
+model1 <- lm(Balance ~ Age + Limit, data = Credit)
+model2 <- lm(Balance ~ Age + Rating + Limit, data = Credit)
+model3 <- lm(Balance ~ Rating + Limit, data = Credit)
+
+# Regression output table
+stargazer(model1, model2, model3, type = "text",
+          title = "Regression Results",
+          dep.var.labels = "Balance",
+          covariate.labels = c("Age", "Limit", "Rating"))
+
+```
+The statistical significance of Rating disappears when Limit is added, despite Rating being highly significant earlier.
+This indicates severe multicollinearity between Rating and Limit.
+
+(c) Calculate the variance inflation factor (VIF) and comment on multicollinearity.
+```{r}
+# Load car library
+library(car)
+
+# Calculate VIF
+vif(model1)
+vif(model2)
+vif(model3)
+```
+Age and Limit show no multicollinearity (VIF ≈ 1).
+
+Rating and Limit show severe multicollinearity (VIF ≈ 160).
+
+This explains the loss of significance of Rating in multiple regression models.
+
+## 2. Problem to demonstrate the detection of outlier,leverage and influential points
+
+Attach “Boston” data from MASS library in R. Select median value of owner occupied homes, as the response and per capita crime rate, nitrogen oxides concentration, proportion of blacks and percentage of lower status of the population as predictors. The objective is to fit a multiple linear regression model of the response on the predictors. With reference to this problem, detect outliers, leverage points and influential points if any.
+
+
+```{r}
+# Load library
+library(MASS)
+
+# Load Boston dataset
+data(Boston)
+
+# Fit multiple linear regression
+model_boston <- lm(medv ~ crim + nox + black + lstat, data = Boston)
+
+# Summary of the model
+summary(model_boston)
+
+```
+
+```{r}
+plot(model_boston$fitted.values, resid(model_boston),
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Residual Plot",
+     pch = 19, col = "blue")
+
+abline(h = 0, col = "red", lwd = 2)
+
+```
+```{r}
+# Standardized residuals
+std_res <- rstandard(model_boston)
+
+# Plot standardized residuals
+plot(model_boston$fitted.values, std_res,
+     xlab = "Fitted Values",
+     ylab = "Standardized Residuals",
+     main = "Standardized Residual Plot",
+     pch = 19, col = "darkgreen")
+
+abline(h = c(-2, 2), col = "red", lty = 2)
+abline(h = c(-3, 3), col = "blue", lty = 2)
+
+```
+```{r}
+which(abs(std_res) > 2)  # Observations that may be outliers
+
+```
+
+#### Detect Leverage points 
+
+```{r}
+# Leverage (hat values)
+hii = hatvalues(model_boston)
+
+# Plot leverage
+plot(hii,
+     ylab = "Leverage (hii)",
+     main = "Leverage Plot",
+     pch = 19)
+
+# Cutoff: 2*(p+1)/n
+n = nrow(Boston)
+p = length(coef(model_boston)) - 1
+cutoff = 2 * (p + 1) / n
+abline(h = cutoff, col = "red", lwd = 2)
+
+# Observations with high leverage
+which(hii > cutoff)
+
+```
+```{r}
+# Cook's distance
+cooksd = cooks.distance(model_boston)
+
+# Plot Cook's distance
+plot(cooksd,
+     ylab = "Cook's Distance",
+     main = "Cook's Distance Plot",
+     pch = 19, col = "purple")
+
+abline(h = 4/(n - p - 1), col = "red", lty = 2)
+
+# Identify influential points
+which(cooksd > 4/(n - p - 1))
+
+```
+## 5.Problem to demonstrate the utility of non-linear regression over linear regression.
+
+Get the fgl data set from “MASS” library.
+
+(a) Considering the refractive index (RI) of “Vehicle Window glass” as the
+variable of interest and assuming linearity of regression, run multiple linear
+regression of RI on different metallic oxides. From the p value, report which
+metallic oxide best explains the refractive index.
+
+(b) Run a simple linear regression of RI on the best predictor chosen in (a).
+
+(c) Can you further improve the regression of the refractive index of “Vehicle
+Window glass” on the predictor chosen by you in part (a)? Give the new fitted
+model and compare its performance with the model in (b).
+
+```{r}
+library(MASS)
+data(fgl)
+
+# Select only Vehicle Window Glass
+vw <- subset(fgl, type == "Veh")
+
+str(vw)
+
+```
+
+**Variables:**
+
+Response: RI
+
+Predictors: Na, Mg, Al, Si, K, Ca, Ba, Fe
+
+```{r}
+# Multiple Linear Regression of RI on Metallic Oxides
+model1 <- lm(RI ~ Na + Mg + Al + Si + K + Ca + Ba + Fe, data = vw)
+summary(model1)
+
+```
+The metallic oxide with the lowest p-value is:
+
+Iron Oxide (Fe) — p = 0.00362
+
+Hence: Answer (a): Best predictor of RI = Fe (Iron Oxide)
+```{r}
+# Simple Linear Regression of RI on Fe
+model2 <- lm(RI ~ Fe, data = vw)
+summary(model2)
+```
+**Interpretation:**
+
+Fe is statistically significant.
+
+However, the R² is moderate, indicating that the linear model does not fully capture the relationship.
+```{r}
+# Non-Linear Regression (Quadratic Model)
+model3 <- lm(RI ~ Fe + I(Fe^2), data = vw)
+summary(model3)
+```
+```{r}
+summary(model2)$adj.r.squared
+summary(model3)$adj.r.squared
+```
+The simple linear regression of RI on Fe shows a statistically significant relationship, but its explanatory power is limited. By introducing a quadratic term, the non-linear regression model substantially improves the goodness of fit, as reflected by higher adjusted R² and lower residual error. Hence, non-linear regression provides a superior model for explaining refractive index variation.
