@@ -1,0 +1,226 @@
+---
+title: "ASSIGNMENT_5_MDTS4214_0709"
+author: "Saurabh Mishra"
+date: "2026-02-26"
+output: word_document
+---
+## Problem Set 3: Multiple Linear Regression
+
+**3 Problem to demonstrate the role of qualitative (ordinal) predictors in addition to quantitative predictors in multiple linear regression**
+
+
+Consider “diamonds” data set in R. It is in the ggplot2 package. Make a list of
+all the ordinal categorical variables. Identify the response.
+
+(a) Run a linear regression of the response on the quality of cut. Write the fitted
+regression model
+
+The ordinal (ordered) categorical variables are:
+
+cut: Fair < Good < Very Good < Premium < Ideal
+
+color: D < E < F < G < H < I < J
+ 
+clarity: I1 < SI2 < SI1 < VS2 < VS1 < VVS2 < VVS1 < IF 
+
+(a) Run a linear regression of the response on the quality of cut. Write the fitted regression model.
+
+```{r}
+library(ggplot2)
+library(MASS)
+contrasts(diamonds$cut)=contr.sdif(5)
+
+m1=lm(price ~ cut, data = diamonds)
+summary(m1)
+coef(m1)
+```
+**price^ =4062.24+-429.89(Cut2-1)+52.89(Cut3-2)+602.50(Cut4-3)-1126.715(Cut5-4)**
+
+(b) Test whether the expected price of diamond with premium cut is significantly different from that of the ideal cut.
+
+Hypotheses:
+
+𝐻0:𝜇(Premium)=𝜇(Ideal)
+against
+𝐻1:𝜇(Premium)≠𝜇(Ideal)
+
+From the output, we have:
+
+𝑝<2×10^(−16)
+
+Since,𝑝<0.05,reject 𝐻0.
+
+The expected price of a Premium cut diamond is significantly different from that of an Ideal cut diamond. Also, 𝜇^ (Ideal)−𝜇^(Premium)= −1126.72, it implies:
+𝜇 ^(Premium) −𝜇^(Ideal)= 1126.72
+
+So Premium diamonds are estimated to cost about 1126.72 more than Ideal on average.
+
+(c) What is the expected price of a diamond of ideal cut?
+
+```{r}
+predict(m1,
+        newdata = data.frame(
+          cut = factor("Ideal", levels=levels(diamonds$cut))
+        ))
+```
+ The expected price of a diamond with Ideal cut is approximately 3457.542
+
+(d) Modify the regression model in (a) by incorporating the predictor “table”.Write the fitted regression model.
+
+```{r}
+m2=lm(price ~ cut + table, data = diamonds)
+summary(m2)
+coef(m2)
+```
+
+**price^ = −6340.256 −365.568(cut2-1) +185.163(cut3-2) +461.015(cut4-3) −626.220(cut5-4) +179.105(table)**
+
+(e) Test for the significance of “table” in predicting the price of diamond.
+
+ Hypotheses:
+ 
+ 𝐻0:β(table)=0
+ against
+ 𝐻1:β(table)≠0
+ 
+ From the output, we have:
+ 
+𝑝<2×10^(−16)
+
+So, table is highly significant for predicting diamond price (after accounting for cut).
+
+
+(f) Find the average estimated price of a diamond with an average table value and which is of fair cut.
+
+```{r}
+mean_table=mean(diamonds$table)
+mean_table
+
+predict(m2, newdata = data.frame(
+  cut = factor("Fair", levels = levels(diamonds$cut)),
+  table = mean_table
+))
+```
+
+ So the average estimated price for a Fair cut diamond at table(mean) = 57.46 is: 4072.8
+
+
+## Problem Set 5: K nearest neighbours regression
+
+**1 Problem to demonstrate the utility of K nearest neighbour regression over least squares regression**
+
+Consider a setting with n = 1000 observations. Generate
+
+ (i) x1i from N(0, 2^2) and x2i from Poisson(λ = 1.5).
+ 
+ (ii) εi from N(0, 1).
+ 
+ (iii) yi = −2 + 1.4x1i − 2.6x2i + εi.
+
+ Split the data into train and test sets. Keep the first 800 observations as training data and the remaining as test data. Work out the following:
+
+```{r}
+set.seed(123)
+n= 1000
+x1=rnorm(n, mean=0, sd=2)
+x2=rpois(n, lambda=1.5)
+eps=rnorm(n, 0, 1)
+
+y=-2 +1.4*x1 -2.6*x2 +eps
+
+data=data.frame(x1, x2, y)
+
+train=data[1:800, ]
+test=data[801:1000, ]
+```
+
+ 1. Fit a multiple linear regression equation of y on x1 and x2. Calculate test MSE.
+
+```{r}
+lm_fit=lm(y ~ x1 + x2, data=train)
+summary(lm_fit)
+
+pred_lm=predict(lm_fit, newdata=test)
+
+mse_lm=mean((test$y - pred_lm)^2)
+mse_lm
+```
+
+Test MSE ≈ 1
+
+2. Fit a KNN model with k = 1, 2, 5, 9, 15. Calculate test MSE for each choice of k.
+
+```{r}
+#install.packages("caret")
+```
+
+```{r}
+library(caret)
+
+k_values=c(1, 2, 5, 9, 15)
+mse_knn_linear <- numeric(length(k_values))
+
+for(i in seq_along(k_values)){
+  knn_fit=knnreg(y ~ x1 + x2, data = train, k = k_values[i])
+  y_pred_knn=predict(knn_fit, test)
+  mse_knn_linear[i]=mean((test$y - y_pred_knn)^2)
+}
+
+data.frame(k = k_values, Test_MSE = mse_knn_linear)
+```
+ Conclusion:
+ KNN with k = 1 may have a very low training MSE but can overfit, leading to higher test MSE.As k increases, the model becomes smoother, reducing variance but increasing bias.For small k (e.g., 1), test MSE may be higher due to high variance (overfitting).As k increases, MSE may decrease initially and then increase again.
+
+ However, overall KNN does not outperform linear regression here.
+ 
+ Since the true relationship is linear, the parametric linear model is more efficient.
+
+Suppose the data in Step (iii) is generated as :
+ yi = 1/(−2 + 1.4x1i − 2.6x2i + 2.9x1i^2) + 3.1 sin(x2i) −1.5x1ix2i^2 + εi.
+
+ Work out the problems in (1) and (2). Compare and comment on the results.
+
+```{r}
+y2=1/(-2 + 1.4*x1 - 2.6*x2 + 2.9*x1^2) +
+      3.1*sin(x2) -
+      1.5*x1*(x2^2) +
+      eps
+
+data2=data.frame(x1,x2,y=y2)
+
+train2=data2[1:800,]
+test2=data2[801:1000,]
+```
+
+```{r}
+lm_fit2 <- lm(y ~ x1 + x2, data=train2)
+summary(lm_fit2)
+
+pred_lm2 <- predict(lm_fit2, newdata=test2)
+
+mse_lm2 <- mean((test2$y - pred_lm2)^2)
+mse_lm2
+```
+Since it is a Misspecified Model, it has a large MSE.
+
+```{r}
+mse_knn_nonlinear=numeric(length(k_values))
+
+for(i in seq_along(k_values)){
+  knn_fit_nl=knnreg(y ~ x1 + x2, data = train2, k = k_values[i])
+  y_pred_knn_nl=predict(knn_fit_nl, test2)
+  mse_knn_nonlinear[i]=mean((test2$y - y_pred_knn_nl)^2)
+}
+
+data.frame(k = k_values, Test_MSE = mse_knn_nonlinear)
+```
+
+ conclusion:
+* In the linear model, the best KNN is at moderate k (9) and gives low test MSE (~1.21).
+
+* In the nonlinear model, the best KNN is at very small k (1), because the relationship is complex and needs high flexibility.
+
+ This clearly demonstrates the bias–variance tradeoff,i.e;
+ * If k is small then we get, low bias & high variance
+ * If k is large then we get, higher bias & lower variance
+
